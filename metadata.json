@@ -1,0 +1,6 @@
+{
+  "name": "BCM BOYS HOSTEL 296 – Student Accommodation in Chikkaballapura",
+  "description": "Official accommodation and enquiry portal for BCM BOYS HOSTEL 296 in Chikkaballapur, Karnataka. Check room availability, schedule a hostel visit, and view facility details.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

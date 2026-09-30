@@ -1,0 +1,341 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // Phase 3: Hardened Global Helpers
+    // =========================================================================
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'sandeepssreddy54@gmail.com';
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email == 'sandeepssreddy54@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // =========================================================================
+    // Validation Blueprints (Pillar 2: Anti-Update-Gap)
+    // =========================================================================
+
+    function isValidAdminProfile(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'role', 'createdAt']) &&
+        data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 && data.uid.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 120 &&
+        data.role == 'admin' &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidSiteConfig(data) {
+      return data.keys().hasAll([
+          'hostelId', 'hostelName', 'address', 'phone', 'email',
+          'openingHours', 'aboutHeading', 'aboutDescription', 'admissionRequirements',
+          'availableDays', 'availableTimeSlots', 'blockedDates',
+          'heroPhotoUrl', 'aboutMainPhotoUrl', 'aboutSecondaryPhotoUrl',
+          'updatedBy', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'hostelId', 'hostelName', 'address', 'phone', 'email',
+          'openingHours', 'aboutHeading', 'aboutDescription', 'admissionRequirements',
+          'availableDays', 'availableTimeSlots', 'blockedDates',
+          'heroPhotoUrl', 'aboutMainPhotoUrl', 'aboutSecondaryPhotoUrl',
+          'updatedBy', 'updatedAt'
+        ]) &&
+        data.hostelId == 'bcm-296' &&
+        data.hostelName is string && data.hostelName.size() >= 1 && data.hostelName.size() <= 120 &&
+        data.address is string && data.address.size() >= 1 && data.address.size() <= 250 &&
+        data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 30 &&
+        data.email is string && data.email.size() >= 0 && data.email.size() <= 120 &&
+        data.openingHours is string && data.openingHours.size() >= 1 && data.openingHours.size() <= 160 &&
+        data.aboutHeading is string && data.aboutHeading.size() >= 1 && data.aboutHeading.size() <= 140 &&
+        data.aboutDescription is string && data.aboutDescription.size() >= 1 && data.aboutDescription.size() <= 1500 &&
+        data.admissionRequirements is string && data.admissionRequirements.size() >= 1 && data.admissionRequirements.size() <= 1500 &&
+        data.availableDays is list && data.availableDays.size() <= 7 &&
+        (data.availableDays.size() == 0 || (data.availableDays[0] is string && data.availableDays[0].size() <= 20)) &&
+        data.availableTimeSlots is list && data.availableTimeSlots.size() <= 16 &&
+        (data.availableTimeSlots.size() == 0 || (data.availableTimeSlots[0] is string && data.availableTimeSlots[0].size() <= 50)) &&
+        data.blockedDates is list && data.blockedDates.size() <= 60 &&
+        (data.blockedDates.size() == 0 || (data.blockedDates[0] is string && data.blockedDates[0].size() <= 20)) &&
+        data.heroPhotoUrl is string && data.heroPhotoUrl.size() <= 350000 &&
+        data.aboutMainPhotoUrl is string && data.aboutMainPhotoUrl.size() <= 350000 &&
+        data.aboutSecondaryPhotoUrl is string && data.aboutSecondaryPhotoUrl.size() <= 350000 &&
+        data.updatedBy is string && data.updatedBy.size() >= 1 && data.updatedBy.size() <= 128 &&
+        data.updatedBy.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.updatedBy == request.auth.uid &&
+        data.updatedAt is timestamp && data.updatedAt == request.time;
+    }
+
+    function isValidFacility(data) {
+      return data.keys().hasAll([
+          'hostelId', 'name', 'description', 'iconName',
+          'verified', 'active', 'order', 'updatedBy', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'hostelId', 'name', 'description', 'iconName',
+          'verified', 'active', 'order', 'updatedBy', 'updatedAt'
+        ]) &&
+        data.hostelId == 'bcm-296' &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+        data.description is string && data.description.size() >= 1 && data.description.size() <= 400 &&
+        data.iconName is string && data.iconName.size() >= 1 && data.iconName.size() <= 40 &&
+        data.verified is bool &&
+        data.active is bool &&
+        data.order is number &&
+        data.updatedBy is string && data.updatedBy.size() >= 1 && data.updatedBy.size() <= 128 &&
+        data.updatedBy.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.updatedBy == request.auth.uid &&
+        data.updatedAt is timestamp && data.updatedAt == request.time;
+    }
+
+    function isValidRoom(data) {
+      return data.keys().hasAll([
+          'hostelId', 'name', 'occupancy', 'status', 'priceText',
+          'depositText', 'facilitiesText', 'photoUrl', 'photoAlt',
+          'verified', 'order', 'updatedBy', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'hostelId', 'name', 'occupancy', 'status', 'priceText',
+          'depositText', 'facilitiesText', 'photoUrl', 'photoAlt',
+          'verified', 'order', 'updatedBy', 'updatedAt'
+        ]) &&
+        data.hostelId == 'bcm-296' &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+        data.occupancy is string && data.occupancy.size() >= 1 && data.occupancy.size() <= 100 &&
+        data.status in ['Available', 'Unavailable', 'Contact for Availability'] &&
+        data.priceText is string && data.priceText.size() >= 1 && data.priceText.size() <= 120 &&
+        data.depositText is string && data.depositText.size() >= 1 && data.depositText.size() <= 120 &&
+        data.facilitiesText is string && data.facilitiesText.size() >= 1 && data.facilitiesText.size() <= 400 &&
+        data.photoUrl is string && data.photoUrl.size() <= 350000 &&
+        data.photoAlt is string && data.photoAlt.size() >= 1 && data.photoAlt.size() <= 200 &&
+        data.verified is bool &&
+        data.order is number &&
+        data.updatedBy is string && data.updatedBy.size() >= 1 && data.updatedBy.size() <= 128 &&
+        data.updatedBy.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.updatedBy == request.auth.uid &&
+        data.updatedAt is timestamp && data.updatedAt == request.time;
+    }
+
+    function isValidGalleryItem(data) {
+      return data.keys().hasAll([
+          'hostelId', 'title', 'category', 'altText',
+          'imageUrl', 'isRealPhoto', 'order', 'updatedBy', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'hostelId', 'title', 'category', 'altText',
+          'imageUrl', 'isRealPhoto', 'order', 'updatedBy', 'updatedAt'
+        ]) &&
+        data.hostelId == 'bcm-296' &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+        data.category in ['Exterior', 'Rooms', 'Study Areas', 'Dining', 'Common Areas', 'Facilities', 'Surroundings'] &&
+        data.altText is string && data.altText.size() >= 1 && data.altText.size() <= 240 &&
+        data.imageUrl is string && data.imageUrl.size() <= 350000 &&
+        data.isRealPhoto is bool &&
+        data.order is number &&
+        data.updatedBy is string && data.updatedBy.size() >= 1 && data.updatedBy.size() <= 128 &&
+        data.updatedBy.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.updatedBy == request.auth.uid &&
+        data.updatedAt is timestamp && data.updatedAt == request.time;
+    }
+
+    function isValidFaqItem(data) {
+      return data.keys().hasAll([
+          'hostelId', 'question', 'answer', 'isVerifiedAnswer',
+          'order', 'updatedBy', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'hostelId', 'question', 'answer', 'isVerifiedAnswer',
+          'order', 'updatedBy', 'updatedAt'
+        ]) &&
+        data.hostelId == 'bcm-296' &&
+        data.question is string && data.question.size() >= 1 && data.question.size() <= 240 &&
+        data.answer is string && data.answer.size() >= 1 && data.answer.size() <= 1200 &&
+        data.isVerifiedAnswer is bool &&
+        data.order is number &&
+        data.updatedBy is string && data.updatedBy.size() >= 1 && data.updatedBy.size() <= 128 &&
+        data.updatedBy.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.updatedBy == request.auth.uid &&
+        data.updatedAt is timestamp && data.updatedAt == request.time;
+    }
+
+    function isValidEnquiry(data) {
+      return data.keys().hasAll([
+          'hostelId', 'referenceNumber', 'submitterUid', 'requirementType',
+          'fullName', 'phone', 'email', 'studentName', 'preferredMoveInDate',
+          'occupantsCount', 'preferredRoomType', 'preferredVisitDate',
+          'preferredTimeSlot', 'message', 'consentGiven', 'status',
+          'adminNotes', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'hostelId', 'referenceNumber', 'submitterUid', 'requirementType',
+          'fullName', 'phone', 'email', 'studentName', 'preferredMoveInDate',
+          'occupantsCount', 'preferredRoomType', 'preferredVisitDate',
+          'preferredTimeSlot', 'message', 'consentGiven', 'status',
+          'adminNotes', 'createdAt', 'updatedAt'
+        ]) &&
+        data.hostelId == 'bcm-296' &&
+        data.referenceNumber is string && data.referenceNumber.size() >= 6 && data.referenceNumber.size() <= 32 &&
+        data.referenceNumber.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.submitterUid is string && data.submitterUid.size() >= 1 && data.submitterUid.size() <= 128 &&
+        data.submitterUid.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.requirementType in ['Accommodation enquiry', 'Hostel visit', 'General enquiry'] &&
+        data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 100 &&
+        data.phone is string && data.phone.size() >= 7 && data.phone.size() <= 25 &&
+        data.email is string && data.email.size() >= 0 && data.email.size() <= 120 &&
+        data.studentName is string && data.studentName.size() >= 0 && data.studentName.size() <= 100 &&
+        data.preferredMoveInDate is string && data.preferredMoveInDate.size() >= 0 && data.preferredMoveInDate.size() <= 30 &&
+        data.occupantsCount is number && data.occupantsCount >= 1 && data.occupantsCount <= 20 &&
+        data.preferredRoomType is string && data.preferredRoomType.size() >= 0 && data.preferredRoomType.size() <= 100 &&
+        data.preferredVisitDate is string && data.preferredVisitDate.size() >= 0 && data.preferredVisitDate.size() <= 30 &&
+        data.preferredTimeSlot is string && data.preferredTimeSlot.size() >= 0 && data.preferredTimeSlot.size() <= 60 &&
+        data.message is string && data.message.size() >= 0 && data.message.size() <= 1000 &&
+        data.consentGiven is bool && data.consentGiven == true &&
+        data.status in ['New', 'Pending', 'Confirmed', 'Rescheduled', 'Completed', 'Cancelled'] &&
+        data.adminNotes is string && data.adminNotes.size() >= 0 && data.adminNotes.size() <= 500 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp && data.updatedAt == request.time;
+    }
+
+    // =========================================================================
+    // Collection Rules
+    // =========================================================================
+
+    match /admins/{adminUid} {
+      allow get: if isVerifiedUser() && isValidId(adminUid) && (request.auth.uid == adminUid || isAdmin());
+      allow list: if false;
+      allow create: if isBootstrappedAdmin() &&
+        isValidId(adminUid) &&
+        isValidAdminProfile(incoming()) &&
+        incoming().uid == adminUid &&
+        incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    match /siteConfig/{configId} {
+      allow get: if isVerifiedUser() && isValidId(configId) && existing().hostelId == 'bcm-296';
+      allow list: if false;
+      allow create: if isVerifiedUser() && isValidId(configId) && isValidSiteConfig(incoming()) && isAdmin();
+      allow update: if isVerifiedUser() && isValidId(configId) && isValidSiteConfig(incoming()) && isAdmin() &&
+        incoming().hostelId == existing().hostelId &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'hostelName', 'address', 'phone', 'email', 'openingHours',
+          'aboutHeading', 'aboutDescription', 'admissionRequirements',
+          'availableDays', 'availableTimeSlots', 'blockedDates',
+          'heroPhotoUrl', 'aboutMainPhotoUrl', 'aboutSecondaryPhotoUrl',
+          'updatedBy', 'updatedAt'
+        ]);
+      allow delete: if false;
+    }
+
+    match /facilities/{facilityId} {
+      allow get: if isVerifiedUser() && isValidId(facilityId) && existing().hostelId == 'bcm-296';
+      allow list: if isVerifiedUser() && existing().hostelId == 'bcm-296';
+      allow create: if isVerifiedUser() && isValidId(facilityId) && isValidFacility(incoming()) && isAdmin();
+      allow update: if isVerifiedUser() && isValidId(facilityId) && isValidFacility(incoming()) && isAdmin() &&
+        incoming().hostelId == existing().hostelId &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'description', 'iconName', 'verified', 'active', 'order', 'updatedBy', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(facilityId) && isAdmin();
+    }
+
+    match /rooms/{roomId} {
+      allow get: if isVerifiedUser() && isValidId(roomId) && existing().hostelId == 'bcm-296';
+      allow list: if isVerifiedUser() && existing().hostelId == 'bcm-296';
+      allow create: if isVerifiedUser() && isValidId(roomId) && isValidRoom(incoming()) && isAdmin();
+      allow update: if isVerifiedUser() && isValidId(roomId) && isValidRoom(incoming()) && isAdmin() &&
+        incoming().hostelId == existing().hostelId &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'occupancy', 'status', 'priceText', 'depositText',
+          'facilitiesText', 'photoUrl', 'photoAlt', 'verified', 'order',
+          'updatedBy', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(roomId) && isAdmin();
+    }
+
+    match /gallery/{photoId} {
+      allow get: if isVerifiedUser() && isValidId(photoId) && existing().hostelId == 'bcm-296';
+      allow list: if isVerifiedUser() && existing().hostelId == 'bcm-296';
+      allow create: if isVerifiedUser() && isValidId(photoId) && isValidGalleryItem(incoming()) && isAdmin();
+      allow update: if isVerifiedUser() && isValidId(photoId) && isValidGalleryItem(incoming()) && isAdmin() &&
+        incoming().hostelId == existing().hostelId &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'category', 'altText', 'imageUrl', 'isRealPhoto', 'order', 'updatedBy', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(photoId) && isAdmin();
+    }
+
+    match /faqs/{faqId} {
+      allow get: if isVerifiedUser() && isValidId(faqId) && existing().hostelId == 'bcm-296';
+      allow list: if isVerifiedUser() && existing().hostelId == 'bcm-296';
+      allow create: if isVerifiedUser() && isValidId(faqId) && isValidFaqItem(incoming()) && isAdmin();
+      allow update: if isVerifiedUser() && isValidId(faqId) && isValidFaqItem(incoming()) && isAdmin() &&
+        incoming().hostelId == existing().hostelId &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'question', 'answer', 'isVerifiedAnswer', 'order', 'updatedBy', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(faqId) && isAdmin();
+    }
+
+    match /enquiries/{enquiryId} {
+      allow get: if isVerifiedUser() && isValidId(enquiryId) &&
+        (existing().submitterUid == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() &&
+        (existing().submitterUid == request.auth.uid || (isBootstrappedAdmin() && existing().hostelId == 'bcm-296'));
+      allow create: if isVerifiedUser() &&
+        isValidId(enquiryId) &&
+        isValidEnquiry(incoming()) &&
+        incoming().submitterUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        (incoming().status == 'New' || isAdmin());
+      allow update: if isVerifiedUser() &&
+        isValidId(enquiryId) &&
+        isValidEnquiry(incoming()) &&
+        incoming().hostelId == existing().hostelId &&
+        incoming().referenceNumber == existing().referenceNumber &&
+        incoming().submitterUid == existing().submitterUid &&
+        incoming().createdAt == existing().createdAt && (
+          // Tier 1: Admin workflow status & schedule management (includes terminal state override)
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly([
+            'status', 'adminNotes', 'preferredVisitDate', 'preferredTimeSlot', 'updatedAt'
+          ])) ||
+          // Tier 2: Submitter can cancel or update message only while not in terminal state
+          (existing().submitterUid == request.auth.uid &&
+            !(existing().status in ['Completed', 'Cancelled']) &&
+            incoming().status in ['New', 'Pending', 'Cancelled'] &&
+            incoming().adminNotes == existing().adminNotes &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['message', 'status', 'updatedAt']))
+        );
+      allow delete: if isVerifiedUser() && isValidId(enquiryId) && isAdmin();
+    }
+  }
+}

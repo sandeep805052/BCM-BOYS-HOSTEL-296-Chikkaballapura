@@ -1,0 +1,630 @@
+{
+  "entities": {
+    "AdminProfile": {
+      "title": "AdminProfile",
+      "description": "Trusted administrator record for hostel management access control.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the administrator.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified email address of the administrator.",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "role": {
+          "type": "string",
+          "description": "Fixed role identifier.",
+          "enum": ["admin"],
+          "minLength": 5,
+          "maxLength": 5
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when admin record was initialized."
+        }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "SiteConfig": {
+      "title": "SiteConfig",
+      "description": "Global hostel configuration, contact details, and booking slot availability settings.",
+      "type": "object",
+      "properties": {
+        "hostelId": {
+          "type": "string",
+          "description": "Constant hostel identifier for query scoping.",
+          "enum": ["bcm-296"],
+          "minLength": 7,
+          "maxLength": 7
+        },
+        "hostelName": {
+          "type": "string",
+          "description": "Official business name of the hostel.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "address": {
+          "type": "string",
+          "description": "Physical address of the hostel.",
+          "minLength": 1,
+          "maxLength": 250
+        },
+        "phone": {
+          "type": "string",
+          "description": "Official public telephone number.",
+          "minLength": 5,
+          "maxLength": 30
+        },
+        "email": {
+          "type": "string",
+          "description": "Optional public contact email supplied by management.",
+          "minLength": 0,
+          "maxLength": 120
+        },
+        "openingHours": {
+          "type": "string",
+          "description": "Office/visiting hours or placeholder notice.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "aboutHeading": {
+          "type": "string",
+          "description": "Heading for the About section.",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "aboutDescription": {
+          "type": "string",
+          "description": "Main institutional description of the hostel.",
+          "minLength": 1,
+          "maxLength": 1500
+        },
+        "admissionRequirements": {
+          "type": "string",
+          "description": "Check-in and admission requirements or management placeholder.",
+          "minLength": 1,
+          "maxLength": 1500
+        },
+        "availableDays": {
+          "type": "array",
+          "description": "Days of the week available for scheduled hostel visits (max 7)."
+        },
+        "availableTimeSlots": {
+          "type": "array",
+          "description": "Time slot labels available for hostel visits (max 16)."
+        },
+        "blockedDates": {
+          "type": "array",
+          "description": "ISO date strings blocked for visits (max 60)."
+        },
+        "heroPhotoUrl": {
+          "type": "string",
+          "description": "Optional real property photograph URL/data URI for the hero section.",
+          "minLength": 0,
+          "maxLength": 350000
+        },
+        "aboutMainPhotoUrl": {
+          "type": "string",
+          "description": "Optional real property photograph URL/data URI for the primary about frame.",
+          "minLength": 0,
+          "maxLength": 350000
+        },
+        "aboutSecondaryPhotoUrl": {
+          "type": "string",
+          "description": "Optional real property photograph URL/data URI for the secondary about frame.",
+          "minLength": 0,
+          "maxLength": 350000
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "UID of the administrator who last updated the configuration.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the latest update."
+        }
+      },
+      "required": [
+        "hostelId",
+        "hostelName",
+        "address",
+        "phone",
+        "email",
+        "openingHours",
+        "aboutHeading",
+        "aboutDescription",
+        "admissionRequirements",
+        "availableDays",
+        "availableTimeSlots",
+        "blockedDates",
+        "heroPhotoUrl",
+        "aboutMainPhotoUrl",
+        "aboutSecondaryPhotoUrl",
+        "updatedBy",
+        "updatedAt"
+      ]
+    },
+    "Facility": {
+      "title": "Facility",
+      "description": "Hostel facility item with explicit verification status.",
+      "type": "object",
+      "properties": {
+        "hostelId": {
+          "type": "string",
+          "description": "Constant hostel identifier.",
+          "enum": ["bcm-296"],
+          "minLength": 7,
+          "maxLength": 7
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the facility.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string",
+          "description": "Facility details or management confirmation notice.",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "iconName": {
+          "type": "string",
+          "description": "Identifier for the facility icon.",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "verified": {
+          "type": "boolean",
+          "description": "True only when management has explicitly verified this facility."
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether the card is displayed on the public website."
+        },
+        "order": {
+          "type": "number",
+          "description": "Display sort order."
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Admin UID who updated the facility.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last modification."
+        }
+      },
+      "required": [
+        "hostelId",
+        "name",
+        "description",
+        "iconName",
+        "verified",
+        "active",
+        "order",
+        "updatedBy",
+        "updatedAt"
+      ]
+    },
+    "Room": {
+      "title": "Room",
+      "description": "Accommodation/room category card managed by the hostel.",
+      "type": "object",
+      "properties": {
+        "hostelId": {
+          "type": "string",
+          "description": "Constant hostel identifier.",
+          "enum": ["bcm-296"],
+          "minLength": 7,
+          "maxLength": 7
+        },
+        "name": {
+          "type": "string",
+          "description": "Room name or accommodation category.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "occupancy": {
+          "type": "string",
+          "description": "Occupancy description or placeholder.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "status": {
+          "type": "string",
+          "description": "Availability status of the room category.",
+          "enum": ["Available", "Unavailable", "Contact for Availability"],
+          "minLength": 9,
+          "maxLength": 24
+        },
+        "priceText": {
+          "type": "string",
+          "description": "Verified price or placeholder text.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "depositText": {
+          "type": "string",
+          "description": "Verified deposit details or placeholder text.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "facilitiesText": {
+          "type": "string",
+          "description": "Summary of room furnishings/amenities or placeholder.",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "photoUrl": {
+          "type": "string",
+          "description": "Real room photo URL/data URI uploaded by management.",
+          "minLength": 0,
+          "maxLength": 350000
+        },
+        "photoAlt": {
+          "type": "string",
+          "description": "Accessible alt text for the room photograph.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "verified": {
+          "type": "boolean",
+          "description": "Whether room pricing and specifications have been verified by management."
+        },
+        "order": {
+          "type": "number",
+          "description": "Sort order."
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Admin UID who updated the room.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp."
+        }
+      },
+      "required": [
+        "hostelId",
+        "name",
+        "occupancy",
+        "status",
+        "priceText",
+        "depositText",
+        "facilitiesText",
+        "photoUrl",
+        "photoAlt",
+        "verified",
+        "order",
+        "updatedBy",
+        "updatedAt"
+      ]
+    },
+    "GalleryItem": {
+      "title": "GalleryItem",
+      "description": "Property photograph or architectural placeholder in the hostel gallery.",
+      "type": "object",
+      "properties": {
+        "hostelId": {
+          "type": "string",
+          "description": "Constant hostel identifier.",
+          "enum": ["bcm-296"],
+          "minLength": 7,
+          "maxLength": 7
+        },
+        "title": {
+          "type": "string",
+          "description": "Caption or title of the gallery item.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "category": {
+          "type": "string",
+          "description": "Gallery section category.",
+          "enum": [
+            "Exterior",
+            "Rooms",
+            "Study Areas",
+            "Dining",
+            "Common Areas",
+            "Facilities",
+            "Surroundings"
+          ],
+          "minLength": 5,
+          "maxLength": 20
+        },
+        "altText": {
+          "type": "string",
+          "description": "Descriptive accessibility alt text.",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "Actual uploaded photo URL/data URI (empty string renders architectural placeholder).",
+          "minLength": 0,
+          "maxLength": 350000
+        },
+        "isRealPhoto": {
+          "type": "boolean",
+          "description": "True if an actual photograph was uploaded by hostel management."
+        },
+        "order": {
+          "type": "number",
+          "description": "Display order."
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Admin UID who updated the item.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp."
+        }
+      },
+      "required": [
+        "hostelId",
+        "title",
+        "category",
+        "altText",
+        "imageUrl",
+        "isRealPhoto",
+        "order",
+        "updatedBy",
+        "updatedAt"
+      ]
+    },
+    "FaqItem": {
+      "title": "FaqItem",
+      "description": "Frequently asked question and answer managed by the hostel.",
+      "type": "object",
+      "properties": {
+        "hostelId": {
+          "type": "string",
+          "description": "Constant hostel identifier.",
+          "enum": ["bcm-296"],
+          "minLength": 7,
+          "maxLength": 7
+        },
+        "question": {
+          "type": "string",
+          "description": "FAQ question text.",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "answer": {
+          "type": "string",
+          "description": "Verified answer or notice to contact management.",
+          "minLength": 1,
+          "maxLength": 1200
+        },
+        "isVerifiedAnswer": {
+          "type": "boolean",
+          "description": "Whether the answer has been explicitly verified by management."
+        },
+        "order": {
+          "type": "number",
+          "description": "Display order."
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Admin UID who updated the FAQ.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp."
+        }
+      },
+      "required": [
+        "hostelId",
+        "question",
+        "answer",
+        "isVerifiedAnswer",
+        "order",
+        "updatedBy",
+        "updatedAt"
+      ]
+    },
+    "Enquiry": {
+      "title": "Enquiry",
+      "description": "Accommodation enquiry or scheduled visit request containing applicant PII.",
+      "type": "object",
+      "properties": {
+        "hostelId": {
+          "type": "string",
+          "description": "Constant hostel identifier.",
+          "enum": ["bcm-296"],
+          "minLength": 7,
+          "maxLength": 7
+        },
+        "referenceNumber": {
+          "type": "string",
+          "description": "Human-readable booking/enquiry reference code.",
+          "minLength": 6,
+          "maxLength": 32,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "submitterUid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user or admin submitting the record.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "requirementType": {
+          "type": "string",
+          "description": "Category of enquiry.",
+          "enum": ["Accommodation enquiry", "Hostel visit", "General enquiry"],
+          "minLength": 10,
+          "maxLength": 30
+        },
+        "fullName": {
+          "type": "string",
+          "description": "Applicant or parent/guardian full name.",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact phone number.",
+          "minLength": 7,
+          "maxLength": 25
+        },
+        "email": {
+          "type": "string",
+          "description": "Applicant email address (optional or provided).",
+          "minLength": 0,
+          "maxLength": 120
+        },
+        "studentName": {
+          "type": "string",
+          "description": "Name of the student requiring accommodation.",
+          "minLength": 0,
+          "maxLength": 100
+        },
+        "preferredMoveInDate": {
+          "type": "string",
+          "description": "Preferred move-in date string.",
+          "minLength": 0,
+          "maxLength": 30
+        },
+        "occupantsCount": {
+          "type": "number",
+          "description": "Number of students/occupants."
+        },
+        "preferredRoomType": {
+          "type": "string",
+          "description": "Selected room category name.",
+          "minLength": 0,
+          "maxLength": 100
+        },
+        "preferredVisitDate": {
+          "type": "string",
+          "description": "Selected date for visiting the hostel.",
+          "minLength": 0,
+          "maxLength": 30
+        },
+        "preferredTimeSlot": {
+          "type": "string",
+          "description": "Selected time slot for the visit.",
+          "minLength": 0,
+          "maxLength": 60
+        },
+        "message": {
+          "type": "string",
+          "description": "Additional enquiry notes or questions.",
+          "minLength": 0,
+          "maxLength": 1000
+        },
+        "consentGiven": {
+          "type": "boolean",
+          "description": "Confirmation that applicant consented to be contacted."
+        },
+        "status": {
+          "type": "string",
+          "description": "Workflow status managed by hostel staff.",
+          "enum": ["New", "Pending", "Confirmed", "Rescheduled", "Completed", "Cancelled"],
+          "minLength": 3,
+          "maxLength": 15
+        },
+        "adminNotes": {
+          "type": "string",
+          "description": "Internal management remarks or rescheduling notes.",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Immutable server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of latest update."
+        }
+      },
+      "required": [
+        "hostelId",
+        "referenceNumber",
+        "submitterUid",
+        "requirementType",
+        "fullName",
+        "phone",
+        "email",
+        "studentName",
+        "preferredMoveInDate",
+        "occupantsCount",
+        "preferredRoomType",
+        "preferredVisitDate",
+        "preferredTimeSlot",
+        "message",
+        "consentGiven",
+        "status",
+        "adminNotes",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/AdminProfile" },
+      "description": "Trusted administrator directory. Only bootstrapped admin email or existing admins can read/create."
+    },
+    "/siteConfig/{configId}": {
+      "schema": { "$ref": "#/entities/SiteConfig" },
+      "description": "Hostel configuration document (configId = 'main'). Readable by verified users, editable only by admins."
+    },
+    "/facilities/{facilityId}": {
+      "schema": { "$ref": "#/entities/Facility" },
+      "description": "Hostel facilities cards with verification flags. Readable by verified users, editable only by admins."
+    },
+    "/rooms/{roomId}": {
+      "schema": { "$ref": "#/entities/Room" },
+      "description": "Hostel room categories and availability status. Readable by verified users, editable only by admins."
+    },
+    "/gallery/{photoId}": {
+      "schema": { "$ref": "#/entities/GalleryItem" },
+      "description": "Hostel gallery items and uploaded property photographs. Readable by verified users, editable only by admins."
+    },
+    "/faqs/{faqId}": {
+      "schema": { "$ref": "#/entities/FaqItem" },
+      "description": "Frequently asked questions and management answers. Readable by verified users, editable only by admins."
+    },
+    "/enquiries/{enquiryId}": {
+      "schema": { "$ref": "#/entities/Enquiry" },
+      "description": "PII-isolated accommodation and visit enquiries. Readable only by the submitting user or an admin."
+    }
+  }
+}
