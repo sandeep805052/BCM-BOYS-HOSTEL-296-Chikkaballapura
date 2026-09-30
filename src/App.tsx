@@ -265,36 +265,24 @@ function HostelWebsiteContent() {
       </header>
 
       {/* =====================================================================
-          4. HERO SECTION WITH FULL-BLEED BACKGROUND IMAGE
+          4. HERO SECTION
           ===================================================================== */}
       <section
         id="home"
         aria-labelledby="hero-heading"
-        className="relative overflow-hidden bg-[#F8FAFC] pt-10 pb-16 sm:pt-16 sm:pb-24 lg:pt-20 lg:pb-28"
+        className="relative overflow-hidden bg-[#F8FAFC] pt-8 pb-14 sm:pt-14 sm:pb-20 lg:pt-16 lg:pb-24"
       >
-        {/* Background Image Layer + Measured Scrim for WCAG Contrast */}
-        <div className="pointer-events-none absolute inset-0 z-0">
-          <img
-            src="/src/assets/images/hero_warm_sunset_background_1790787847534.jpg"
-            alt="Warm sunset terrace background for BCM BOYS HOSTEL 296"
-            referrerPolicy="no-referrer"
-            className="h-full w-full object-cover object-center"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#F8FAFC]/95 via-[#F8FAFC]/82 to-[#F8FAFC]/30 sm:from-[#F8FAFC]/94 sm:via-[#F8FAFC]/75 sm:to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#F8FAFC] to-transparent" />
-        </div>
-
-        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-12">
             {/* Left Editorial Column (7 cols) */}
             <div className="lg:col-span-7">
               {/* Quiet Unboxed Location & Category Metadata (Zero-Pill Discipline) */}
-              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[#1769AA] sm:text-sm">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[#1769AA] sm:text-sm">
                 <span>Chikkaballapura, Karnataka</span>
                 <span aria-hidden="true">·</span>
                 <span>Boys Hostel &amp; Student Accommodation</span>
                 <span aria-hidden="true">·</span>
-                <span className="font-mono-tabular text-[#102A43]">562101</span>
+                <span className="font-mono-tabular text-[#243447]">562101</span>
               </div>
 
               <h1
@@ -304,7 +292,7 @@ function HostelWebsiteContent() {
                 A Comfortable Place to Stay, Study &amp; Grow
               </h1>
 
-              <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#102A43]/90 sm:text-lg">
+              <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#243447]/90 sm:text-lg">
                 BCM BOYS HOSTEL 296, Chikkaballapura — a dedicated accommodation facility for boys
                 seeking a convenient and supportive place to stay.
               </p>
@@ -323,7 +311,7 @@ function HostelWebsiteContent() {
                 <button
                   type="button"
                   onClick={() => navigateToBooking('Hostel visit')}
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-[#102A43]/25 bg-white/95 px-6 py-3 text-sm font-semibold text-[#102A43] transition-colors duration-150 hover:bg-[#E8F0F7] whitespace-nowrap"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-[#102A43]/25 bg-white px-6 py-3 text-sm font-semibold text-[#102A43] transition-colors duration-150 hover:bg-[#E8F0F7] whitespace-nowrap"
                 >
                   <Calendar className="h-4 w-4 text-[#1769AA]" />
                   <span>Schedule a Visit</span>
@@ -331,7 +319,7 @@ function HostelWebsiteContent() {
 
                 <a
                   href={cleanPhoneHref}
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-white/80 px-4 py-3 text-sm font-semibold text-[#102A43] backdrop-blur-xs hover:bg-white hover:underline whitespace-nowrap"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold text-[#102A43] hover:underline whitespace-nowrap"
                 >
                   <Phone className="h-4 w-4 text-[#2E7D5B]" />
                   <span className="font-mono-tabular">{siteConfig.phone}</span>
@@ -339,7 +327,7 @@ function HostelWebsiteContent() {
               </div>
 
               {/* Concise Public Listing Trust Indicator */}
-              <div className="mt-10 border-t border-[#102A43]/15 pt-5 text-xs text-[#102A43]/90 sm:text-sm">
+              <div className="mt-10 border-t border-[#102A43]/10 pt-5 text-xs text-[#243447]/85 sm:text-sm">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span className="font-mono-tabular font-semibold text-[#102A43]">5.0 ★</span>
                   <span aria-hidden="true">·</span>
@@ -354,11 +342,8 @@ function HostelWebsiteContent() {
             <div className="lg:col-span-5">
               <PropertyVisualFrame
                 variant="hero"
-                imageUrl={
-                  siteConfig.heroPhotoUrl ||
-                  '/src/assets/images/hero_warm_sunset_background_1790787847534.jpg'
-                }
-                altText="BCM BOYS HOSTEL 296 living environment in Chikkaballapura, Karnataka"
+                imageUrl={siteConfig.heroPhotoUrl}
+                altText="BCM BOYS HOSTEL 296 building and student living space in Chikkaballapura, Karnataka"
                 title="BCM BOYS HOSTEL 296 — Residential Facility"
                 categoryLabel="Chikkaballapura, Karnataka"
                 aspectClass="aspect-[4/3] sm:aspect-[16/11] lg:aspect-[4/3]"
