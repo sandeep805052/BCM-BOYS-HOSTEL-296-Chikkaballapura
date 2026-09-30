@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import {
   User,
   onAuthStateChanged,
@@ -45,7 +45,7 @@ import {
   INITIAL_GALLERY,
   INITIAL_FAQS,
 } from '../data/initialData';
-import { saveEnquiryToSupabase } from '../lib/supabase';
+import { saveEnquiryToSupabase, subscribeToSupabaseAppointments } from '../lib/supabase';
 
 interface HostelContextValue {
   user: User | null;
@@ -138,6 +138,247 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [enquiries, setEnquiries] = useState<EnquiryItem[]>(() =>
     loadFromStorage(STORAGE_KEYS.ENQUIRIES, [])
   );
+
+  // WebSocket client & pending outbound queue
+  const wsRef = useRef<WebSocket | null>(null);
+  const pendingQueueRef = useRef<string[]>([]);
+
+  const emitSocketEvent = (type: string, payload: unknown) => {
+    const serialized = JSON.stringify({ type, payload });
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(serialized);
+    } else {
+      pendingQueueRef.current.push(serialized);
+    }
+  };
+
+  // Connect to /ws WebSocket server + Supabase Realtime WebSocket channel
+  useEffect(() => {
+    let isMounted = true;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const connectWebSocket = () => {
+      if (!isMounted) return;
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      const socket = new WebSocket(wsUrl);
+      wsRef.current = socket;
+
+      socket.onopen = () => {
+        while (pendingQueueRef.current.length > 0 && socket.readyState === WebSocket.OPEN) {
+          const msg = pendingQueueRef.current.shift();
+          if (msg) socket.send(msg);
+        }
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data) as { type: string; payload: any };
+          switch (msg.type) {
+            case 'init': {
+              const serverEnquiries: EnquiryItem[] = msg.payload?.enquiries || [];
+              if (serverEnquiries.length > 0) {
+                setEnquiries((prev) => {
+                  const map = new Map<string, EnquiryItem>();
+                  [...serverEnquiries, ...prev].forEach((item) => {
+                    if (!map.has(item.referenceNumber)) {
+                      map.set(item.referenceNumber, item);
+                    }
+                  });
+                  const merged = Array.from(map.values()).sort((a, b) =>
+                    b.createdAtIso.localeCompare(a.createdAtIso)
+                  );
+                  saveToStorage(STORAGE_KEYS.ENQUIRIES, merged);
+                  return merged;
+                });
+              }
+              break;
+            }
+            case 'enquiry:created': {
+              const incoming = msg.payload as EnquiryItem;
+              if (!incoming?.id) break;
+              setEnquiries((prev) => {
+                if (
+                  prev.some(
+                    (e) =>
+                      e.id === incoming.id ||
+                      e.referenceNumber === incoming.referenceNumber
+                  )
+                ) {
+                  return prev;
+                }
+                const next = [incoming, ...prev];
+                saveToStorage(STORAGE_KEYS.ENQUIRIES, next);
+                return next;
+              });
+              break;
+            }
+            case 'enquiry:updated': {
+              const updated = msg.payload as EnquiryItem;
+              if (!updated?.id) break;
+              setEnquiries((prev) => {
+                const next = prev.map((e) =>
+                  e.id === updated.id || e.referenceNumber === updated.referenceNumber
+                    ? { ...e, ...updated }
+                    : e
+                );
+                saveToStorage(STORAGE_KEYS.ENQUIRIES, next);
+                return next;
+              });
+              break;
+            }
+            case 'enquiry:deleted': {
+              const deletedId = String(msg.payload?.id || '');
+              if (!deletedId) break;
+              setEnquiries((prev) => {
+                const next = prev.filter((e) => e.id !== deletedId);
+                saveToStorage(STORAGE_KEYS.ENQUIRIES, next);
+                return next;
+              });
+              break;
+            }
+            case 'config:updated': {
+              const nextCfg = msg.payload as SiteConfig;
+              if (!nextCfg) break;
+              setSiteConfig((prev) => {
+                const merged = { ...prev, ...nextCfg };
+                saveToStorage(STORAGE_KEYS.SITE_CONFIG, merged);
+                return merged;
+              });
+              break;
+            }
+            case 'room:upserted': {
+              const room = msg.payload as RoomItem;
+              if (!room?.id) break;
+              setRooms((prev) => {
+                const exists = prev.some((r) => r.id === room.id);
+                const next = exists
+                  ? prev.map((r) => (r.id === room.id ? room : r))
+                  : [...prev, room];
+                saveToStorage(STORAGE_KEYS.ROOMS, next);
+                return next;
+              });
+              break;
+            }
+            case 'room:deleted': {
+              const id = String(msg.payload?.id || '');
+              if (!id) break;
+              setRooms((prev) => {
+                const next = prev.filter((r) => r.id !== id);
+                saveToStorage(STORAGE_KEYS.ROOMS, next);
+                return next;
+              });
+              break;
+            }
+            case 'facility:upserted': {
+              const fac = msg.payload as FacilityItem;
+              if (!fac?.id) break;
+              setFacilities((prev) => {
+                const exists = prev.some((f) => f.id === fac.id);
+                const next = exists
+                  ? prev.map((f) => (f.id === fac.id ? fac : f))
+                  : [...prev, fac];
+                saveToStorage(STORAGE_KEYS.FACILITIES, next);
+                return next;
+              });
+              break;
+            }
+            case 'facility:deleted': {
+              const id = String(msg.payload?.id || '');
+              if (!id) break;
+              setFacilities((prev) => {
+                const next = prev.filter((f) => f.id !== id);
+                saveToStorage(STORAGE_KEYS.FACILITIES, next);
+                return next;
+              });
+              break;
+            }
+            case 'gallery:upserted': {
+              const gal = msg.payload as GalleryItem;
+              if (!gal?.id) break;
+              setGallery((prev) => {
+                const exists = prev.some((g) => g.id === gal.id);
+                const next = exists
+                  ? prev.map((g) => (g.id === gal.id ? gal : g))
+                  : [...prev, gal];
+                saveToStorage(STORAGE_KEYS.GALLERY, next);
+                return next;
+              });
+              break;
+            }
+            case 'gallery:deleted': {
+              const id = String(msg.payload?.id || '');
+              if (!id) break;
+              setGallery((prev) => {
+                const next = prev.filter((g) => g.id !== id);
+                saveToStorage(STORAGE_KEYS.GALLERY, next);
+                return next;
+              });
+              break;
+            }
+            case 'faq:upserted': {
+              const faq = msg.payload as FaqItem;
+              if (!faq?.id) break;
+              setFaqs((prev) => {
+                const exists = prev.some((f) => f.id === faq.id);
+                const next = exists
+                  ? prev.map((f) => (f.id === faq.id ? faq : f))
+                  : [...prev, faq];
+                saveToStorage(STORAGE_KEYS.FAQS, next);
+                return next;
+              });
+              break;
+            }
+            case 'faq:deleted': {
+              const id = String(msg.payload?.id || '');
+              if (!id) break;
+              setFaqs((prev) => {
+                const next = prev.filter((f) => f.id !== id);
+                saveToStorage(STORAGE_KEYS.FAQS, next);
+                return next;
+              });
+              break;
+            }
+            default:
+              break;
+          }
+        } catch {
+          // Ignore malformed frame
+        }
+      };
+
+      socket.onclose = () => {
+        if (isMounted) {
+          reconnectTimer = setTimeout(connectWebSocket, 2500);
+        }
+      };
+    };
+
+    connectWebSocket();
+
+    // Subscribe to Supabase Realtime WebSocket channel
+    const unsubSupabaseWs = subscribeToSupabaseAppointments((supaItem) => {
+      setEnquiries((prev) => {
+        const exists = prev.some((e) => e.referenceNumber === supaItem.referenceNumber);
+        const next = exists
+          ? prev.map((e) =>
+              e.referenceNumber === supaItem.referenceNumber ? { ...e, ...supaItem } : e
+            )
+          : [supaItem, ...prev];
+        saveToStorage(STORAGE_KEYS.ENQUIRIES, next);
+        return next;
+      });
+    });
+
+    return () => {
+      isMounted = false;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+      unsubSupabaseWs();
+    };
+  }, []);
 
   // Track Auth state
   useEffect(() => {
@@ -483,6 +724,9 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       syncedToCloud: Boolean(user && user.emailVerified),
     };
 
+    // Broadcast over WebSocket immediately for real-time multi-user sync
+    emitSocketEvent('enquiry:create', newEnquiry);
+
     // Automatically send booking data to the user's Supabase database
     try {
       await saveEnquiryToSupabase(newEnquiry);
@@ -558,6 +802,10 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     );
     setEnquiries(updatedList);
     saveToStorage(STORAGE_KEYS.ENQUIRIES, updatedList);
+    const updatedTarget = updatedList.find((item) => item.id === id);
+    if (updatedTarget) {
+      emitSocketEvent('enquiry:update', updatedTarget);
+    }
 
     if (user && user.emailVerified && isAdmin) {
       const path = `enquiries/${cleanId}`;
@@ -583,6 +831,7 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const next = enquiries.filter((e) => e.id !== id);
     setEnquiries(next);
     saveToStorage(STORAGE_KEYS.ENQUIRIES, next);
+    emitSocketEvent('enquiry:delete', { id });
 
     if (user && user.emailVerified && isAdmin) {
       const path = `enquiries/${cleanId}`;
@@ -636,6 +885,7 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     setSiteConfig(sanitized);
     saveToStorage(STORAGE_KEYS.SITE_CONFIG, sanitized);
+    emitSocketEvent('config:update', sanitized);
 
     if (user && user.emailVerified && isAdmin) {
       const path = 'siteConfig/main';
@@ -672,6 +922,7 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         : [...facilities, sanitized];
     setFacilities(nextList);
     saveToStorage(STORAGE_KEYS.FACILITIES, nextList);
+    emitSocketEvent('facility:upsert', sanitized);
 
     if (user && user.emailVerified && isAdmin) {
       const path = `facilities/${cleanId}`;
@@ -693,6 +944,7 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const nextList = facilities.filter((f) => f.id !== cleanId);
     setFacilities(nextList);
     saveToStorage(STORAGE_KEYS.FACILITIES, nextList);
+    emitSocketEvent('facility:delete', { id: cleanId });
 
     if (user && user.emailVerified && isAdmin) {
       const path = `facilities/${cleanId}`;
@@ -733,6 +985,7 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       existsIdx >= 0 ? rooms.map((r) => (r.id === cleanId ? sanitized : r)) : [...rooms, sanitized];
     setRooms(nextList);
     saveToStorage(STORAGE_KEYS.ROOMS, nextList);
+    emitSocketEvent('room:upsert', sanitized);
 
     if (user && user.emailVerified && isAdmin) {
       const path = `rooms/${cleanId}`;
@@ -754,6 +1007,7 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const nextList = rooms.filter((r) => r.id !== cleanId);
     setRooms(nextList);
     saveToStorage(STORAGE_KEYS.ROOMS, nextList);
+    emitSocketEvent('room:delete', { id: cleanId });
 
     if (user && user.emailVerified && isAdmin) {
       const path = `rooms/${cleanId}`;
@@ -786,6 +1040,7 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         : [...gallery, sanitized];
     setGallery(nextList);
     saveToStorage(STORAGE_KEYS.GALLERY, nextList);
+    emitSocketEvent('gallery:upsert', sanitized);
 
     if (user && user.emailVerified && isAdmin) {
       const path = `gallery/${cleanId}`;
@@ -807,6 +1062,7 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const nextList = gallery.filter((g) => g.id !== cleanId);
     setGallery(nextList);
     saveToStorage(STORAGE_KEYS.GALLERY, nextList);
+    emitSocketEvent('gallery:delete', { id: cleanId });
 
     if (user && user.emailVerified && isAdmin) {
       const path = `gallery/${cleanId}`;
@@ -835,6 +1091,7 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       existsIdx >= 0 ? faqs.map((f) => (f.id === cleanId ? sanitized : f)) : [...faqs, sanitized];
     setFaqs(nextList);
     saveToStorage(STORAGE_KEYS.FAQS, nextList);
+    emitSocketEvent('faq:upsert', sanitized);
 
     if (user && user.emailVerified && isAdmin) {
       const path = `faqs/${cleanId}`;
@@ -856,6 +1113,7 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const nextList = faqs.filter((f) => f.id !== cleanId);
     setFaqs(nextList);
     saveToStorage(STORAGE_KEYS.FAQS, nextList);
+    emitSocketEvent('faq:delete', { id: cleanId });
 
     if (user && user.emailVerified && isAdmin) {
       const path = `faqs/${cleanId}`;

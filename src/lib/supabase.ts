@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { EnquiryItem } from '../types';
+import { EnquiryItem, EnquiryStatus, RequirementType } from '../types';
 
 const SUPABASE_PROJECT_ID =
   import.meta.env.VITE_SUPABASE_PROJECT_ID || 'zcrcrcwmrobfdofaevwl';
@@ -34,7 +34,6 @@ export async function saveEnquiryToSupabase(enquiry: EnquiryItem): Promise<boole
     created_at: enquiry.createdAtIso,
   };
 
-  // Attempt standard table names used in Supabase appointment/enquiry setups
   const candidateTables = ['appointments', 'enquiries', 'bookings'];
 
   for (const tableName of candidateTables) {
@@ -49,4 +48,55 @@ export async function saveEnquiryToSupabase(enquiry: EnquiryItem): Promise<boole
   }
 
   return false;
+}
+
+/**
+ * Subscribes to Supabase Realtime WebSocket events on the `appointments` table
+ * so new or updated bookings stream live into the application.
+ */
+export function subscribeToSupabaseAppointments(
+  onRecordReceived: (item: EnquiryItem) => void
+): () => void {
+  const channel = supabase
+    .channel('bcm296-appointments-realtime')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'appointments' },
+      (payload) => {
+        const row = (payload.new || {}) as Record<string, unknown>;
+        const referenceNumber = String(row.reference_number || '');
+        if (!referenceNumber) return;
+
+        const mapped: EnquiryItem = {
+          id: `supa_${referenceNumber.replace(/[^a-zA-Z0-9_\-]/g, '_')}`,
+          hostelId: 'bcm-296',
+          referenceNumber,
+          submitterUid: 'supabase_realtime',
+          requirementType:
+            (row.requirement_type as RequirementType) || 'Accommodation enquiry',
+          fullName: String(row.full_name || ''),
+          phone: String(row.phone || ''),
+          email: String(row.email || ''),
+          studentName: String(row.student_name || ''),
+          preferredMoveInDate: String(row.preferred_move_in_date || ''),
+          occupantsCount: Number(row.occupants_count || 1),
+          preferredRoomType: String(row.preferred_room_type || ''),
+          preferredVisitDate: String(row.preferred_visit_date || ''),
+          preferredTimeSlot: String(row.preferred_time_slot || ''),
+          message: String(row.message || ''),
+          consentGiven: Boolean(row.consent_given ?? true),
+          status: (row.status as EnquiryStatus) || 'New',
+          adminNotes: String(row.admin_notes || ''),
+          createdAtIso: String(row.created_at || new Date().toISOString()),
+          syncedToCloud: true,
+        };
+
+        onRecordReceived(mapped);
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }
